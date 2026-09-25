@@ -1,14 +1,27 @@
 FROM docker.io/drupal:10.0-apache
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Accept the required build arguments
+ARG REPO_DIR="."
+ARG ENV_USR="jenkins"
+ARG ENV_HOST="127.0.0.1"
 
-# Install dependencies
+ENV DEBIAN_FRONTEND=noninteractive \
+    ENV_USR=${ENV_USR} \
+    ENV_HOST=${ENV_HOST}
+
+# Install dependencies including Composer and MySQL client
 RUN apt-get update && \
-    apt-get install -y git unzip default-mysql-client && \
+    apt-get install -y git unzip default-mysql-client curl && \
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy codebase
-COPY . /opt/drupal/
+COPY ${REPO_DIR} /opt/drupal/
+
+WORKDIR /opt/drupal
+
+# Install PHP dependencies and Drush via Composer inside the image build
+RUN composer install --no-dev --no-interaction --no-progress
 
 # Enable mod_rewrite for Drupal
 RUN a2enmod rewrite
