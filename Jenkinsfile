@@ -60,9 +60,9 @@ pipeline {
                         sleep 3
                     done
 
-                    # Run Drush installation using explicit TCP driver syntax
+                    # Explicitly pass PDO mysql connection parameters
                     podman exec -t ${SITE_CONTAINER} /opt/drupal/vendor/bin/drush site:install standard \
-                      --db-url="mysql://${DB_USER}:${DB_PASS}@127.0.0.1:3306/drupal" \
+                      --db-url="mysql://${DB_USER}:${DB_PASS}@127.0.0.1:3306/drupal?module=mysql" \
                       --site-name="FOSSEE R Drupal 10" \
                       --account-name="admin" \
                       --account-pass="AdminPassword123!" \
