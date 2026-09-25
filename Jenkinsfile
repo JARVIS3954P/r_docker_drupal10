@@ -27,13 +27,16 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'drupal-db-creds', passwordVariable: 'DB_PASS', usernameVariable: 'DB_USER')]) {
                     sh """
-                    # Create pod if it doesn't exist
-                    podman pod exists ${POD_NAME} || podman pod create --name ${POD_NAME} -p 80:80
+                    # Remove old pod if existing
+                    podman pod rm -f ${POD_NAME} || true
 
-                    # Spin up MariaDB 10.11 container with SELinux flags
+                    # Create new pod
+                    podman pod create --name ${POD_NAME} -p 80:80
+
+                    # Spin up MariaDB 10.11 container
                     podman run -d --pod ${POD_NAME} \
                       --name ${DB_CONTAINER} \
-                      --replace \
+                      --restart always \
                       -v mariadb_data:/var/lib/mysql:Z,U \
                       -e MYSQL_ROOT_PASSWORD=${DB_PASS} \
                       -e MYSQL_DATABASE=drupal \
@@ -44,7 +47,7 @@ pipeline {
                     # Deploy Drupal 10 container
                     podman run -d --pod ${POD_NAME} \
                       --name ${SITE_CONTAINER} \
-                      --replace \
+                      --restart always \
                       -v drupal_files:/opt/drupal/sites/default/files:Z,U \
                       ${APP_NAME}:latest
                     """
@@ -56,9 +59,9 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'drupal-db-creds', passwordVariable: 'DB_PASS', usernameVariable: 'DB_USER')]) {
                     sh """
-                    sleep 12
+                    sleep 15
 
-                    # Run Drush site install if fresh database
+                    # Run Drush site install
                     podman exec -t ${SITE_CONTAINER} /opt/drupal/vendor/bin/drush site:install standard \
                       --db-url="mysql://${DB_USER}:${DB_PASS}@127.0.0.1:3306/drupal" \
                       --site-name="FOSSEE R Drupal 10" \
