@@ -27,13 +27,9 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'drupal-db-creds', passwordVariable: 'DB_PASS', usernameVariable: 'DB_USER')]) {
                     sh """
-                    # Remove old pod if existing
                     podman pod rm -f ${POD_NAME} || true
-
-                    # Create new pod
                     podman pod create --name ${POD_NAME} -p 80:80
 
-                    # Spin up MariaDB 10.11 container
                     podman run -d --pod ${POD_NAME} \
                       --name ${DB_CONTAINER} \
                       --restart always \
@@ -44,7 +40,6 @@ pipeline {
                       -e MYSQL_PASSWORD=${DB_PASS} \
                       docker.io/library/mariadb:10.11
 
-                    # Deploy Drupal 10 container
                     podman run -d --pod ${POD_NAME} \
                       --name ${SITE_CONTAINER} \
                       --restart always \
@@ -59,17 +54,21 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'drupal-db-creds', passwordVariable: 'DB_PASS', usernameVariable: 'DB_USER')]) {
                     sh """
-                    sleep 15
+                    echo "Waiting for MariaDB service to accept connections..."
+                    until podman exec ${DB_CONTAINER} mariadb-admin ping -h 127.0.0.1 -u ${DB_USER} -p${DB_PASS} --silent; do
+                        echo "MariaDB starting up..."
+                        sleep 3
+                    done
 
-                    # Run Drush site install
+                    # Run Drush installation using explicit TCP driver syntax
                     podman exec -t ${SITE_CONTAINER} /opt/drupal/vendor/bin/drush site:install standard \
                       --db-url="mysql://${DB_USER}:${DB_PASS}@127.0.0.1:3306/drupal" \
                       --site-name="FOSSEE R Drupal 10" \
                       --account-name="admin" \
                       --account-pass="AdminPassword123!" \
-                      -y || true
+                      -y
 
-                    # Configure trusted host patterns
+                    # Set trusted host patterns
                     podman exec -t ${SITE_CONTAINER} /opt/drupal/vendor/bin/drush php:eval \
                       '\$settings["trusted_host_patterns"] = [".*"];'
                     """
