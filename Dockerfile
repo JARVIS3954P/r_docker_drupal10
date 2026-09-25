@@ -16,3 +16,6 @@ RUN sed -i 's|/var/www/html|/opt/drupal|g' /etc/apache2/sites-available/000-defa
     composer install --no-cache --no-dev --no-interaction --no-progress
 
 EXPOSE 80
+
+# Keep Apache running in foreground
+CMD ["apache2-foreground"]
