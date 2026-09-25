@@ -10,23 +10,14 @@ pipeline {
     }
     
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/JARVIS3954P/r_docker_drupal10.git'
-            }
-        }
-        
         stage('Build Image with Podman') {
             steps {
                 script {
                     sh """
                     podman build \
-                      --build-arg REPO_DIR=. \
-                      --build-arg ENV_USR=drupaluser \
-                      --build-arg ENV_HOST=${env.SERVER_IP ?: 'localhost'} \
                       -t ${APP_NAME}:${BUILD_TAG} \
                       -t ${APP_NAME}:latest \
-                      -f 10/Dockerfile .
+                      -f Dockerfile .
                     """
                 }
             }
