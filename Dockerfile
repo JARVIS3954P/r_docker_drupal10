@@ -1,30 +1,25 @@
-FROM docker.io/drupal:10.0-apache
+FROM apache2-drupal-base:latest
 
-ENV DEBIAN_FRONTEND=noninteractive
+# 1. Enable Apache mod_rewrite for Drupal clean URLs
+RUN a2enmod rewrite
 
-# Install required tools
-RUN apt update && \
-    apt install -y git unzip default-mysql-client && \
-    rm -rf /var/lib/apt/lists/*
+# 2. Update Apache DocumentRoot to point directly to /opt/drupal/web
+RUN sed -i 's|/var/www/html|/opt/drupal/web|g' /etc/apache2/sites-available/000-default.conf \
+    && sed -i 's|/var/www/html|/opt/drupal/web|g' /etc/apache2/apache2.conf
 
-# Copy repository code to /opt/drupal
-COPY . /opt/drupal/
+# 3. Configure Directory block to allow .htaccess overrides and symlinks
+RUN echo '<Directory /opt/drupal/web>' >> /etc/apache2/apache2.conf && \
+    echo '    Options Indexes FollowSymLinks' >> /etc/apache2/apache2.conf && \
+    echo '    AllowOverride All' >> /etc/apache2/apache2.conf && \
+    echo '    Require all granted' >> /etc/apache2/apache2.conf && \
+    echo '</Directory>' >> /etc/apache2/apache2.conf
 
-# Re-point Apache's DocumentRoot symlink from /opt/drupal/web to /opt/drupal
-RUN rm -rf /var/www/html && \
-    ln -s /opt/drupal /var/www/html
+# 4. Ensure site files and web root are owned by www-data
+WORKDIR /opt/drupal
+RUN chown -R www-data:www-data /opt/drupal
 
-# Grant Apache (<Directory /var/www/html>) permission to follow symlinks and access files
-RUN echo '<Directory /var/www/html>\n\
-    Options Indexes FollowSymLinks\n\
-    AllowOverride All\n\
-    Require all granted\n\
-</Directory>' >> /etc/apache2/apache2.conf
-
-# Set permissions for www-data
-RUN chown -R www-data:www-data /opt/drupal && \
-    chmod -R 755 /opt/drupal
-
+# Expose port 80
 EXPOSE 80
 
+# Start Apache in the foreground
 CMD ["apache2-foreground"]
