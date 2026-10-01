@@ -125,4 +125,33 @@ pipeline {
             }
         }
     }
+        post {
+        always {
+            sh '''
+                set -eux
+    
+                echo "===== POST-BUILD CONTAINER CLEANUP ====="
+    
+                echo "--- Containers before prune ---"
+                podman ps -a --format "table {{.Names}}\\t{{.Image}}\\t{{.Status}}"
+    
+                echo "--- Dangling images before prune ---"
+                podman images --filter dangling=true
+    
+                echo "--- Removing stopped containers ---"
+                podman container prune -f
+    
+                echo "--- Removing dangling images ---"
+                podman image prune -f
+    
+                echo "--- Containers after prune ---"
+                podman ps -a --format "table {{.Names}}\\t{{.Image}}\\t{{.Status}}"
+    
+                echo "--- Dangling images after prune ---"
+                podman images --filter dangling=true
+    
+                echo "===== POST-BUILD CLEANUP COMPLETE ====="
+            '''
+        }
+    }
 }
