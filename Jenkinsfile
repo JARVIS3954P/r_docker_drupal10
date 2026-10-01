@@ -11,5 +11,22 @@ pipeline {
                 echo 'FOSSEE Drupal repository checkout verified'
             }
         }
+
+        stage('Repository Validation') {
+            steps {
+                sh '''
+                    set -eu
+
+                    test -f composer.json
+                    test -f composer.lock
+                    test -d sites
+                    test -d modules
+                    test -d themes
+                    test -d libraries
+
+                    echo "Repository structure validation passed"
+                '''
+            }
+        }
     }
 }
