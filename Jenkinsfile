@@ -9,6 +9,7 @@ pipeline {
                 sh 'test -f composer.json'
                 sh 'test -d sites'
                 echo 'FOSSEE Drupal repository checkout verified'
+                echo 'Webhook push trigger verification'
             }
         }
 
