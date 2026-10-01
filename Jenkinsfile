@@ -4,28 +4,42 @@ pipeline {
     stages {
         stage('SCM Verification') {
             steps {
-                sh 'git rev-parse --short HEAD'
-                sh 'git branch --show-current || true'
-                sh 'test -f composer.json'
-                sh 'test -d sites'
-                echo 'FOSSEE Drupal repository checkout verified'
-                echo 'Webhook push trigger verification'
-            }
-        }
-
-        stage('Repository Validation') {
-            steps {
                 sh '''
                     set -eu
 
+                    git rev-parse --short HEAD
+                    git branch --show-current || true
+
                     test -f composer.json
                     test -f composer.lock
+                    test -f Dockerfile
+                    test -f .dockerignore
                     test -d sites
                     test -d modules
                     test -d themes
                     test -d libraries
 
-                    echo "Repository structure validation passed"
+                    echo "FOSSEE Drupal repository checkout verified"
+                '''
+            }
+        }
+
+        stage('Podman Build') {
+            steps {
+                sh '''
+                    set -eu
+
+                    IMAGE="localhost/fossee-drupal:${BUILD_NUMBER}"
+
+                    podman build \
+                        --tag "${IMAGE}" \
+                        .
+
+                    echo "Built image: ${IMAGE}"
+
+                    podman image inspect \
+                        "${IMAGE}" \
+                        --format 'ID={{.Id}}'
                 '''
             }
         }
